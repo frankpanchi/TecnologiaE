@@ -20,7 +20,7 @@ public class conexion {
     
     private static Connection conn=null;
     private static final String  login = "system";
-    private static final String  clave = "francisco7599";
+    private static final String  clave = "admin";
     private static final String  url = "jdbc:oracle:thin:@localhost:1521:XE";
     
     public Connection getConnection() throws SQLException{

@@ -5,6 +5,7 @@
  */
 package parcial;
 
+import Clases.Vendedor;
 import java.beans.Statement;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,26 +14,43 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import javax.swing.table.DefaultTableModel;
 import parcial.conexion;
+import Clases.LlenarObjetos;
+import Clases.Procedimiento;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 
 /**
  *
  * @author PANCHY
  */
 public final class principal extends javax.swing.JFrame {
+
     Connection cn;
-    conexion conn =new conexion();
+    conexion conn = new conexion();
     PreparedStatement s;
     ResultSet rs;
     DefaultTableModel dtm;
+    LlenarObjetos objLlenar = new LlenarObjetos();
+    Procedimiento objProd = new Procedimiento();
+    int id, idProd, cant;
+    DefaultTableModel modelo;
+    double precio;
+    int ite = 0;
+    String[] camposRepresentante;
+
     /**
      * Creates new form principal
      */
-    
     public principal() {
         initComponents();
-        
+
         LlenarTablaVenta();
-         LlenarTablaVendedor();
+        LlenarTablaVendedor();
+        objLlenar.mostrarVendedores(cbvendedor);
+        modelo = null;
+
     }
 
     /**
@@ -53,8 +71,8 @@ public final class principal extends javax.swing.JFrame {
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jPanel1 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
-        jTable1 = new javax.swing.JTable();
-        cbvendedor = new javax.swing.JComboBox<>();
+        tableVend = new javax.swing.JTable();
+        cbvendedor = new javax.swing.JComboBox<Vendedor>();
         jLabel1 = new javax.swing.JLabel();
         txtproducto = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
@@ -62,10 +80,11 @@ public final class principal extends javax.swing.JFrame {
         jLabel3 = new javax.swing.JLabel();
         txtcant = new javax.swing.JTextField();
         jScrollPane5 = new javax.swing.JScrollPane();
-        jTable3 = new javax.swing.JTable();
+        tableVentaFinal = new javax.swing.JTable();
         btnventa = new javax.swing.JButton();
         btncancelar = new javax.swing.JButton();
         jLabel4 = new javax.swing.JLabel();
+        btnVentaFinal = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
@@ -107,7 +126,7 @@ public final class principal extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+        tableVend.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
 
             },
@@ -115,9 +134,19 @@ public final class principal extends javax.swing.JFrame {
                 "id", "Nombre", "Marca", "Modelo", "Precio", "Cantidad"
             }
         ));
-        jScrollPane2.setViewportView(jTable1);
+        tableVend.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                tableVendMouseClicked(evt);
+            }
+        });
+        jScrollPane2.setViewportView(tableVend);
 
-        cbvendedor.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        cbvendedor.setModel(new javax.swing.DefaultComboBoxModel(new String[] { }));
+        cbvendedor.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                cbvendedorMouseClicked(evt);
+            }
+        });
 
         jLabel1.setText("Producto:");
 
@@ -125,21 +154,33 @@ public final class principal extends javax.swing.JFrame {
 
         jLabel3.setText("Cantidad:");
 
-        jTable3.setModel(new javax.swing.table.DefaultTableModel(
+        tableVentaFinal.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
 
             },
             new String [] {
-                "id", "Proveedor", "Cliente", "Producto", "Vendedor"
+
             }
         ));
-        jScrollPane5.setViewportView(jTable3);
+        jScrollPane5.setViewportView(tableVentaFinal);
 
         btnventa.setText("Realizar Venta");
+        btnventa.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnventaActionPerformed(evt);
+            }
+        });
 
         btncancelar.setText("Cancelar");
 
         jLabel4.setText("Vendedor");
+
+        btnVentaFinal.setText("Finalizar venta");
+        btnVentaFinal.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnVentaFinalActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -178,7 +219,10 @@ public final class principal extends javax.swing.JFrame {
                                 .addComponent(btnventa)
                                 .addGap(33, 33, 33)
                                 .addComponent(btncancelar))
-                            .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 525, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 525, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(btnVentaFinal)))
                 .addContainerGap(64, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
@@ -206,7 +250,9 @@ public final class principal extends javax.swing.JFrame {
                     .addComponent(btncancelar))
                 .addGap(26, 26, 26)
                 .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 166, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(50, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 12, Short.MAX_VALUE)
+                .addComponent(btnVentaFinal)
+                .addContainerGap())
         );
 
         jTabbedPane1.addTab("Ventas", jPanel1);
@@ -352,7 +398,7 @@ public final class principal extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 657, Short.MAX_VALUE)
+            .addComponent(jTabbedPane1)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -361,6 +407,64 @@ public final class principal extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void cbvendedorMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_cbvendedorMouseClicked
+        // TODO add your handling code here:
+
+    }//GEN-LAST:event_cbvendedorMouseClicked
+
+    private void btnventaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnventaActionPerformed
+        // TODO add your handling code here:
+        if (ite == 0) {
+            String[] titulo = {"ID producto", "Producto", "cantidad", "Precio"};
+            modelo = new DefaultTableModel(null, titulo);
+            camposRepresentante = new String[4];
+            ite = 1;
+        }
+        camposRepresentante[0] = idProd + "";
+        camposRepresentante[1] = txtproducto.getText();
+        camposRepresentante[2] = cant + "";
+        camposRepresentante[3] = precio + "";
+        modelo.addRow(camposRepresentante);
+        tableVentaFinal.setModel(modelo);
+    }//GEN-LAST:event_btnventaActionPerformed
+
+    private void btnVentaFinalActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnVentaFinalActionPerformed
+        // TODO add your handling code here:
+        if (this.tableVentaFinal.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "Debe agregar primero productos a la tabla");
+        } else {
+            id = Integer.parseInt(cbvendedor.getItemAt(cbvendedor.getSelectedIndex()).getId() + "");
+            int[] nuevoArray = new int[tableVentaFinal.getRowCount()];
+            int[] nuevoArrayD = new int[tableVentaFinal.getRowCount()];
+            for (int i = 0; i <= tableVentaFinal.getRowCount() - 1; i++) {
+                int idp = Integer.parseInt(tableVentaFinal.getValueAt(i, 0) + "");
+                int cantid = Integer.parseInt(tableVentaFinal.getValueAt(i, 2) + "");
+                nuevoArray[i] = idp;
+                nuevoArrayD[i] = cantid;
+            }
+            try {
+                objProd.InsertarVenta(id, 1, nuevoArray, nuevoArrayD, 01, 02, 2014);
+                JOptionPane.showMessageDialog(this, "vendidos con éxito");
+            } catch (ClassNotFoundException ex) {
+                Logger.getLogger(principal.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (SQLException ex) {
+                Logger.getLogger(principal.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+    }//GEN-LAST:event_btnVentaFinalActionPerformed
+
+    private void tableVendMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tableVendMouseClicked
+        // TODO add your handling code here:
+        DefaultTableModel modelo = (DefaultTableModel) tableVend.getModel();
+        txtproducto.setText(String.valueOf(modelo.getValueAt(tableVend.getSelectedRow(), 1) + ""));
+        idProd = Integer.parseInt(String.valueOf(modelo.getValueAt(tableVend.getSelectedRow(), 0) + ""));
+        cant = Integer.parseInt(String.valueOf(modelo.getValueAt(tableVend.getSelectedRow(), 4) + ""));
+        precio = Integer.parseInt(String.valueOf(modelo.getValueAt(tableVend.getSelectedRow(), 5) + ""));
+        txtcant.setText(cant + "");
+        txtprecio.setText(precio + "");
+    }//GEN-LAST:event_tableVendMouseClicked
 
     /**
      * @param args the command line arguments
@@ -395,33 +499,30 @@ public final class principal extends javax.swing.JFrame {
                 new principal().setVisible(true);
             }
         });
-        
-       
+
     }
-    
-      public void LlenarTablaVenta()
-    {
+
+    public void LlenarTablaVenta() {
         try {
             DefaultTableModel modelo = new DefaultTableModel();
-            this.jTable1.setModel(modelo);
-            s=conn.getConnection().prepareStatement("select p.id_producto,  p.nombre,  p.marca,p.modelo, i.precio, i.cantidad, i.costo from producto_d p "
+            this.tableVend.setModel(modelo);
+            s = conn.getConnection().prepareStatement("select p.id_producto,  p.nombre,  p.marca,p.modelo, i.precio, i.cantidad, i.costo from producto_d p "
                     + "inner join hechos_compra_d hc on hc.id_producto=p.id_producto "
                     + "inner join inventario_d i on i.id_inventario= hc.id_inventario");
-            rs=s.executeQuery();
-            ResultSetMetaData rsmd=rs.getMetaData();
-            int cantcolumnas=rsmd.getColumnCount();
-            
-           for (int i =1; i < cantcolumnas; i++) {
+            rs = s.executeQuery();
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int cantcolumnas = rsmd.getColumnCount();
+
+            for (int i = 1; i < cantcolumnas; i++) {
                 modelo.addColumn(rsmd.getColumnLabel(i));
-                
+
             }
-            
-            while(rs.next())
-            {
-            Object[] fila = new Object[cantcolumnas];
+
+            while (rs.next()) {
+                Object[] fila = new Object[cantcolumnas];
                 for (int i = 0; i < cantcolumnas; i++) {
-                    fila[i]=rs.getObject(i+1);
-                    
+                    fila[i] = rs.getObject(i + 1);
+
                 }
                 modelo.addRow(fila);
             }
@@ -429,37 +530,33 @@ public final class principal extends javax.swing.JFrame {
             cn.close();
         } catch (Exception e) {
         }
-        
-     
-        
+
     }
-      
-         public void LlenarTablaVendedor()
-    {
+
+    public void LlenarTablaVendedor() {
         try {
             DefaultTableModel modelo = new DefaultTableModel();
             this.jTable4.setModel(modelo);
-            s=conn.getConnection().prepareStatement("select v.nombre || ' ' || v.apellido as vendedor, sum(vd.total) as total, v.nombre from hechos_venta_d hv\n" +
-"inner join vendedor_d v on v.id_vendedor = hv.id_vendedor\n" +
-"inner join venta_d vd on vd.id_venta = hv.id_venta\n" +
-"inner join tiempo_d t on t.id_tiempo= hv.id_tiempo\n" +
-"where v.id_vendedor = hv.id_vendedor and Dia=9 and mes =12 and anho= 2018\n" +
-"GROUP BY total, v.nombre || ' ' || v.apellido, ' ', v.nombre");
-            rs=s.executeQuery();
-            ResultSetMetaData rsmd=rs.getMetaData();
-            int cantcolumnas=rsmd.getColumnCount();
-            
-           for (int i =1; i < cantcolumnas; i++) {
+            s = conn.getConnection().prepareStatement("select v.nombre || ' ' || v.apellido as vendedor, sum(vd.total) as total, v.nombre from hechos_venta_d hv\n"
+                    + "inner join vendedor_d v on v.id_vendedor = hv.id_vendedor\n"
+                    + "inner join venta_d vd on vd.id_venta = hv.id_venta\n"
+                    + "inner join tiempo_d t on t.id_tiempo= hv.id_tiempo\n"
+                    + "where v.id_vendedor = hv.id_vendedor and Dia=9 and mes =12 and anho= 2018\n"
+                    + "GROUP BY total, v.nombre || ' ' || v.apellido, ' ', v.nombre");
+            rs = s.executeQuery();
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int cantcolumnas = rsmd.getColumnCount();
+
+            for (int i = 1; i < cantcolumnas; i++) {
                 modelo.addColumn(rsmd.getColumnLabel(i));
-                
+
             }
-            
-            while(rs.next())
-            {
-            Object[] fila = new Object[cantcolumnas];
+
+            while (rs.next()) {
+                Object[] fila = new Object[cantcolumnas];
                 for (int i = 0; i < cantcolumnas; i++) {
-                    fila[i]=rs.getObject(i+1);
-                    
+                    fila[i] = rs.getObject(i + 1);
+
                 }
                 modelo.addRow(fila);
             }
@@ -468,32 +565,31 @@ public final class principal extends javax.swing.JFrame {
         } catch (Exception e) {
         }
     }
-     public void LlenarTablaCliente()
-    {
+
+    public void LlenarTablaCliente() {
         try {
             DefaultTableModel modelo = new DefaultTableModel();
             this.jTable5.setModel(modelo);
-            s=conn.getConnection().prepareStatement("select c.nombre || ' ' || c.apellido as Cliente, sum(vd.total) as total, c.nombre from hechos_venta_d hv\n" +
-"inner join cliente_d c on c.id_cliente = hv.id_cliente\n" +
-"inner join venta_d vd on vd.id_venta = hv.id_venta\n" +
-"inner join tiempo_d t on t.id_tiempo= hv.id_tiempo\n" +
-"where c.id_cliente = hv.id_cliente and Dia=9 and mes =12 and anho= 2018\n" +
-"GROUP BY total, c.nombre || ' ' || c.apellido, ' ', c.nombre");
-            rs=s.executeQuery();
-            ResultSetMetaData rsmd=rs.getMetaData();
-            int cantcolumnas=rsmd.getColumnCount();
-            
-           for (int i =1; i < cantcolumnas; i++) {
+            s = conn.getConnection().prepareStatement("select c.nombre || ' ' || c.apellido as Cliente, sum(vd.total) as total, c.nombre from hechos_venta_d hv\n"
+                    + "inner join cliente_d c on c.id_cliente = hv.id_cliente\n"
+                    + "inner join venta_d vd on vd.id_venta = hv.id_venta\n"
+                    + "inner join tiempo_d t on t.id_tiempo= hv.id_tiempo\n"
+                    + "where c.id_cliente = hv.id_cliente and Dia=9 and mes =12 and anho= 2018\n"
+                    + "GROUP BY total, c.nombre || ' ' || c.apellido, ' ', c.nombre");
+            rs = s.executeQuery();
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int cantcolumnas = rsmd.getColumnCount();
+
+            for (int i = 1; i < cantcolumnas; i++) {
                 modelo.addColumn(rsmd.getColumnLabel(i));
-                
+
             }
-            
-            while(rs.next())
-            {
-            Object[] fila = new Object[cantcolumnas];
+
+            while (rs.next()) {
+                Object[] fila = new Object[cantcolumnas];
                 for (int i = 0; i < cantcolumnas; i++) {
-                    fila[i]=rs.getObject(i+1);
-                    
+                    fila[i] = rs.getObject(i + 1);
+
                 }
                 modelo.addRow(fila);
             }
@@ -503,9 +599,10 @@ public final class principal extends javax.swing.JFrame {
         }
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnVentaFinal;
     private javax.swing.JButton btncancelar;
     private javax.swing.JButton btnventa;
-    private javax.swing.JComboBox<String> cbvendedor;
+    private javax.swing.JComboBox<Vendedor> cbvendedor;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
@@ -528,13 +625,13 @@ public final class principal extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane6;
     private javax.swing.JScrollPane jScrollPane7;
     private javax.swing.JTabbedPane jTabbedPane1;
-    private javax.swing.JTable jTable1;
     private javax.swing.JTable jTable2;
-    private javax.swing.JTable jTable3;
     private javax.swing.JTable jTable4;
     private javax.swing.JTable jTable5;
     private javax.swing.JTextArea jTextArea1;
     private javax.swing.JTextArea jTextArea2;
+    private javax.swing.JTable tableVend;
+    private javax.swing.JTable tableVentaFinal;
     private javax.swing.JTextField txtcant;
     private javax.swing.JTextField txtfechaF;
     private javax.swing.JTextField txtfechaFC;
