@@ -5,17 +5,34 @@
  */
 package parcial;
 
+import java.beans.Statement;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import javax.swing.table.DefaultTableModel;
+import parcial.conexion;
+
 /**
  *
  * @author PANCHY
  */
-public class principal extends javax.swing.JFrame {
-
+public final class principal extends javax.swing.JFrame {
+    Connection cn;
+    conexion conn =new conexion();
+    PreparedStatement s;
+    ResultSet rs;
+    DefaultTableModel dtm;
     /**
      * Creates new form principal
      */
+    
     public principal() {
         initComponents();
+        
+        LlenarTablaVenta();
+         LlenarTablaVendedor();
     }
 
     /**
@@ -129,13 +146,10 @@ public class principal extends javax.swing.JFrame {
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
                         .addGap(23, 23, 23)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(10, 10, 10)
-                                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 524, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(jPanel1Layout.createSequentialGroup()
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
@@ -153,7 +167,10 @@ public class principal extends javax.swing.JFrame {
                             .addGroup(jPanel1Layout.createSequentialGroup()
                                 .addComponent(jLabel4)
                                 .addGap(40, 40, 40)
-                                .addComponent(cbvendedor, javax.swing.GroupLayout.PREFERRED_SIZE, 131, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addComponent(cbvendedor, javax.swing.GroupLayout.PREFERRED_SIZE, 131, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGap(10, 10, 10)
+                                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 555, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addContainerGap()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -162,7 +179,7 @@ public class principal extends javax.swing.JFrame {
                                 .addGap(33, 33, 33)
                                 .addComponent(btncancelar))
                             .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 525, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(63, Short.MAX_VALUE))
+                .addContainerGap(64, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -233,7 +250,7 @@ public class principal extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(46, 46, 46)
                 .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(85, Short.MAX_VALUE))
+                .addContainerGap(117, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -335,7 +352,7 @@ public class principal extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jTabbedPane1)
+            .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 657, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -378,8 +395,113 @@ public class principal extends javax.swing.JFrame {
                 new principal().setVisible(true);
             }
         });
+        
+       
     }
-
+    
+      public void LlenarTablaVenta()
+    {
+        try {
+            DefaultTableModel modelo = new DefaultTableModel();
+            this.jTable1.setModel(modelo);
+            s=conn.getConnection().prepareStatement("select p.id_producto,  p.nombre,  p.marca,p.modelo, i.precio, i.cantidad, i.costo from producto_d p "
+                    + "inner join hechos_compra_d hc on hc.id_producto=p.id_producto "
+                    + "inner join inventario_d i on i.id_inventario= hc.id_inventario");
+            rs=s.executeQuery();
+            ResultSetMetaData rsmd=rs.getMetaData();
+            int cantcolumnas=rsmd.getColumnCount();
+            
+           for (int i =1; i < cantcolumnas; i++) {
+                modelo.addColumn(rsmd.getColumnLabel(i));
+                
+            }
+            
+            while(rs.next())
+            {
+            Object[] fila = new Object[cantcolumnas];
+                for (int i = 0; i < cantcolumnas; i++) {
+                    fila[i]=rs.getObject(i+1);
+                    
+                }
+                modelo.addRow(fila);
+            }
+            rs.close();
+            cn.close();
+        } catch (Exception e) {
+        }
+        
+     
+        
+    }
+      
+         public void LlenarTablaVendedor()
+    {
+        try {
+            DefaultTableModel modelo = new DefaultTableModel();
+            this.jTable4.setModel(modelo);
+            s=conn.getConnection().prepareStatement("select v.nombre || ' ' || v.apellido as vendedor, sum(vd.total) as total, v.nombre from hechos_venta_d hv\n" +
+"inner join vendedor_d v on v.id_vendedor = hv.id_vendedor\n" +
+"inner join venta_d vd on vd.id_venta = hv.id_venta\n" +
+"inner join tiempo_d t on t.id_tiempo= hv.id_tiempo\n" +
+"where v.id_vendedor = hv.id_vendedor and Dia=9 and mes =12 and anho= 2018\n" +
+"GROUP BY total, v.nombre || ' ' || v.apellido, ' ', v.nombre");
+            rs=s.executeQuery();
+            ResultSetMetaData rsmd=rs.getMetaData();
+            int cantcolumnas=rsmd.getColumnCount();
+            
+           for (int i =1; i < cantcolumnas; i++) {
+                modelo.addColumn(rsmd.getColumnLabel(i));
+                
+            }
+            
+            while(rs.next())
+            {
+            Object[] fila = new Object[cantcolumnas];
+                for (int i = 0; i < cantcolumnas; i++) {
+                    fila[i]=rs.getObject(i+1);
+                    
+                }
+                modelo.addRow(fila);
+            }
+            rs.close();
+            cn.close();
+        } catch (Exception e) {
+        }
+    }
+     public void LlenarTablaCliente()
+    {
+        try {
+            DefaultTableModel modelo = new DefaultTableModel();
+            this.jTable5.setModel(modelo);
+            s=conn.getConnection().prepareStatement("select c.nombre || ' ' || c.apellido as Cliente, sum(vd.total) as total, c.nombre from hechos_venta_d hv\n" +
+"inner join cliente_d c on c.id_cliente = hv.id_cliente\n" +
+"inner join venta_d vd on vd.id_venta = hv.id_venta\n" +
+"inner join tiempo_d t on t.id_tiempo= hv.id_tiempo\n" +
+"where c.id_cliente = hv.id_cliente and Dia=9 and mes =12 and anho= 2018\n" +
+"GROUP BY total, c.nombre || ' ' || c.apellido, ' ', c.nombre");
+            rs=s.executeQuery();
+            ResultSetMetaData rsmd=rs.getMetaData();
+            int cantcolumnas=rsmd.getColumnCount();
+            
+           for (int i =1; i < cantcolumnas; i++) {
+                modelo.addColumn(rsmd.getColumnLabel(i));
+                
+            }
+            
+            while(rs.next())
+            {
+            Object[] fila = new Object[cantcolumnas];
+                for (int i = 0; i < cantcolumnas; i++) {
+                    fila[i]=rs.getObject(i+1);
+                    
+                }
+                modelo.addRow(fila);
+            }
+            rs.close();
+            cn.close();
+        } catch (Exception e) {
+        }
+    }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btncancelar;
     private javax.swing.JButton btnventa;
